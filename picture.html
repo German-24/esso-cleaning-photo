@@ -68,6 +68,11 @@
   }
 </style>
 </head>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="config.js"></script>
+</head>
+
+
 <body class="bg-gray-50 min-h-screen">
 
 <!-- HEADER -->
@@ -176,7 +181,12 @@
 // ============== CONFIGURATION ==============
 // Get your FREE API key from: https://api.imgbb.com/
 // Sign up with Google → Copy your API key → Paste below
-const IMGBB_API_KEY = '815e890176cb3ae61fad9b9f1a147767'; // ⚠️ REPLACE THIS!
+const IMGBB_API_KEY = window.APP_CONFIG?.imgbbApiKey || '';
+if (!IMGBB_API_KEY) {
+  alert('⚠️ Config not loaded. Please contact admin.');
+  throw new Error('API key missing');
+}
+ // ⚠️ REPLACE THIS!
 
 // ============== DATA ==============
 let photos = JSON.parse(localStorage.getItem('essoCleaningPhotos')) || [];
