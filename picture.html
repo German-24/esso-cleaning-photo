@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>📸 ESSO Cleaning Photos</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="config.js"></script>  <!-- ✅ LOADED HERE (before </head>) -->
+<script src="config.js"></script>
 <style>
   body { font-family: 'Segoe UI', Tahoma, sans-serif; }
   .gradient-bg { background: linear-gradient(135deg, #0891b2 0%, #0e7490 50%, #155e75 100%); }
@@ -16,19 +16,6 @@
   ::-webkit-scrollbar { width: 8px; }
   ::-webkit-scrollbar-track { background: #f1f1f1; }
   ::-webkit-scrollbar-thumb { background: #0891b2; border-radius: 4px; }
-  
-  .upload-zone {
-    border: 3px dashed #0891b2;
-    border-radius: 12px;
-    padding: 40px 20px;
-    text-align: center;
-    background: #f0f9ff;
-    cursor: pointer;
-    transition: all 0.3s;
-  }
-  .upload-zone:hover {
-    background: #e0f2fe;
-  }
   
   .big-btn {
     color: white;
@@ -56,19 +43,17 @@
     border: 3px solid #f3f3f3;
     border-top: 3px solid white;
     border-radius: 50%;
-    width: 20px;
-    height: 20px;
+    width: 40px;
+    height: 40px;
     animation: spin 1s linear infinite;
     display: inline-block;
-    vertical-align: middle;
-    margin-right: 8px;
   }
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
   }
 </style>
-</head>  <!-- ✅ ONLY ONE </head> TAG -->
+</head>
 
 <body class="bg-gray-50 min-h-screen">
 
@@ -93,10 +78,10 @@
 
   <!-- BIG UPLOAD BUTTONS -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-    <button onclick="openUploadModal('camera')" class="big-btn" style="background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);">
+    <button onclick="triggerCamera()" class="big-btn" style="background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);">
       📷 Take Photo
     </button>
-    <button onclick="openUploadModal('gallery')" class="big-btn" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);">
+    <button onclick="triggerGallery()" class="big-btn" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);">
       🖼️ Choose from Gallery
     </button>
   </div>
@@ -107,9 +92,14 @@
       <p class="text-gray-500 text-sm">Total Photos</p>
       <h2 class="text-2xl font-bold text-cyan-700" id="photoCount">0</h2>
     </div>
-    <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleFile(event)" />
-    <input type="file" id="galleryInput" accept="image/*" class="hidden" onchange="handleFile(event)" />
+    <div class="text-xs text-gray-500">
+      💡 Tip: Click button → Take photo → Wait for ✅ → Close
+    </div>
   </div>
+
+  <!-- Hidden file inputs (FRESH each time) -->
+  <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" />
+  <input type="file" id="galleryInput" accept="image/*" class="hidden" />
 
   <!-- GALLERY -->
   <div id="photoGallery" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -127,19 +117,19 @@
 <div id="uploadModal" class="modal">
   <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4">
     <div class="gradient-bg text-white p-5 rounded-t-2xl flex justify-between items-center">
-      <h2 class="text-xl font-bold">☁️ Uploading...</h2>
-      <button onclick="closeUploadModal()" class="text-white text-2xl hover:scale-110">✕</button>
+      <h2 class="text-xl font-bold" id="uploadTitle">☁️ Uploading...</h2>
+      <button onclick="forceCloseModal()" class="text-white text-2xl hover:scale-110">✕</button>
     </div>
     <div class="p-6 text-center">
-      <div id="uploadPreview" class="mb-4">
+      <div id="uploadPreview" class="mb-4 hidden">
         <img id="previewImg" class="w-full rounded-lg" />
       </div>
       <div id="uploadStatus" class="mb-4">
-        <div class="spinner" style="border-top-color: #0891b2; width: 40px; height: 40px;"></div>
+        <div class="spinner" style="border-top-color: #0891b2;"></div>
         <p class="mt-3 text-gray-700 font-semibold" id="statusText">Uploading to cloud...</p>
       </div>
-      <button id="closeBtn" onclick="closeUploadModal()" class="hidden w-full bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 rounded-lg font-semibold">
-        Done
+      <button id="closeBtn" onclick="forceCloseModal()" class="hidden w-full bg-gray-300 hover:bg-gray-400 text-gray-800 py-3 rounded-lg font-semibold">
+        ✅ Done
       </button>
     </div>
   </div>
@@ -176,10 +166,8 @@
 
 <script>
 // ============== CONFIGURATION ==============
-// API key is loaded from config.js file (separately, for security)
 const IMGBB_API_KEY = window.APP_CONFIG?.imgbbApiKey || '';
 
-// Check if API key is loaded
 if (!IMGBB_API_KEY) {
   alert('⚠️ Configuration error!\n\nPlease make sure config.js file exists with your API key.\n\nContact admin if problem persists.');
   throw new Error('API key missing - check config.js');
@@ -188,6 +176,7 @@ if (!IMGBB_API_KEY) {
 // ============== DATA ==============
 let photos = JSON.parse(localStorage.getItem('essoCleaningPhotos')) || [];
 let currentPhotoId = null;
+let isUploading = false; // Prevent multiple uploads
 
 function saveToStorage() {
   localStorage.setItem('essoCleaningPhotos', JSON.stringify(photos));
@@ -206,27 +195,51 @@ function updateDateTime() {
   document.getElementById('currentTime').textContent = now.toLocaleTimeString('en-GB');
 }
 
-// ============== UPLOAD ==============
-function openUploadModal(source) {
-  if (!IMGBB_API_KEY) {
-    showToast('⚠️ API key not configured!');
+// ============== TRIGGER FILE INPUTS (FRESH EACH TIME) ==============
+function triggerCamera() {
+  if (isUploading) {
+    showToast('⚠️ Please wait for current upload to finish');
     return;
   }
-  if (source === 'camera') {
-    document.getElementById('cameraInput').click();
-  } else {
-    document.getElementById('galleryInput').click();
-  }
+  const input = document.getElementById('cameraInput');
+  input.value = ''; // RESET
+  input.onchange = handleFile;
+  input.click();
 }
 
-function closeUploadModal() {
+function triggerGallery() {
+  if (isUploading) {
+    showToast('⚠️ Please wait for current upload to finish');
+    return;
+  }
+  const input = document.getElementById('galleryInput');
+  input.value = ''; // RESET
+  input.onchange = handleFile;
+  input.click();
+}
+
+// ============== UPLOAD MODAL ==============
+function showUploadModal() {
+  // Reset modal content
+  document.getElementById('uploadStatus').classList.remove('hidden');
+  document.getElementById('uploadStatus').innerHTML = `
+    <div class="spinner" style="border-top-color: #0891b2;"></div>
+    <p class="mt-3 text-gray-700 font-semibold" id="statusText">Uploading to cloud...</p>
+  `;
+  document.getElementById('uploadPreview').classList.add('hidden');
+  document.getElementById('closeBtn').classList.add('hidden');
+  document.getElementById('uploadModal').classList.add('active');
+}
+
+function forceCloseModal() {
   document.getElementById('uploadModal').classList.remove('active');
+  isUploading = false;
+  // Clear file inputs completely
   document.getElementById('cameraInput').value = '';
   document.getElementById('galleryInput').value = '';
-  document.getElementById('closeBtn').classList.add('hidden');
-  document.getElementById('uploadStatus').classList.remove('hidden');
 }
 
+// ============== HANDLE FILE ==============
 function handleFile(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -236,19 +249,22 @@ function handleFile(event) {
     return;
   }
 
+  isUploading = true;
+  showUploadModal();
+
   // Show preview
   const reader = new FileReader();
   reader.onload = e => {
     document.getElementById('previewImg').src = e.target.result;
+    document.getElementById('uploadPreview').classList.remove('hidden');
   };
   reader.readAsDataURL(file);
   
-  document.getElementById('uploadModal').classList.add('active');
-  
-  // Upload
+  // Start upload
   uploadToCloud(file);
 }
 
+// ============== UPLOAD TO CLOUD ==============
 async function uploadToCloud(file) {
   document.getElementById('statusText').textContent = 'Uploading to cloud...';
   
@@ -276,18 +292,31 @@ async function uploadToCloud(file) {
       photos.unshift(photoRecord);
       saveToStorage();
       
-      document.getElementById('statusText').textContent = '✅ Uploaded!';
-      document.getElementById('uploadStatus').innerHTML = '<div class="text-6xl">✅</div><p class="mt-3 text-green-600 font-bold text-lg">Saved to Cloud!</p>';
+      // Show success
+      document.getElementById('uploadStatus').innerHTML = `
+        <div class="text-6xl mb-2">✅</div>
+        <p class="mt-3 text-green-600 font-bold text-lg">Saved to Cloud!</p>
+        <p class="text-xs text-gray-500 mt-1">Click "Done" to continue</p>
+      `;
       document.getElementById('closeBtn').classList.remove('hidden');
+      document.getElementById('closeBtn').textContent = '✅ Done';
       
       renderGallery();
       showToast('✅ Photo saved!');
+      
+      isUploading = false;
     } else {
       throw new Error(data.error?.message || 'Upload failed');
     }
   } catch (err) {
-    document.getElementById('uploadStatus').innerHTML = '<div class="text-6xl">❌</div><p class="mt-3 text-red-600 font-bold">Upload Failed</p><p class="text-sm text-gray-500 mt-1">' + err.message + '</p>';
+    document.getElementById('uploadStatus').innerHTML = `
+      <div class="text-6xl mb-2">❌</div>
+      <p class="mt-3 text-red-600 font-bold">Upload Failed</p>
+      <p class="text-sm text-gray-500 mt-1">${err.message}</p>
+    `;
     document.getElementById('closeBtn').classList.remove('hidden');
+    document.getElementById('closeBtn').textContent = '🔄 Try Again';
+    isUploading = false;
   }
 }
 
