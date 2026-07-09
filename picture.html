@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>📸 ESSO Cleaning Photos</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="config.js"></script>  <!-- ✅ LOADED HERE (before </head>) -->
 <style>
   body { font-family: 'Segoe UI', Tahoma, sans-serif; }
   .gradient-bg { background: linear-gradient(135deg, #0891b2 0%, #0e7490 50%, #155e75 100%); }
@@ -67,11 +68,7 @@
     100% { transform: rotate(360deg); }
   }
 </style>
-</head>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-  <script src="config.js"></script>
-</head>
-
+</head>  <!-- ✅ ONLY ONE </head> TAG -->
 
 <body class="bg-gray-50 min-h-screen">
 
@@ -179,14 +176,14 @@
 
 <script>
 // ============== CONFIGURATION ==============
-// Get your FREE API key from: https://api.imgbb.com/
-// Sign up with Google → Copy your API key → Paste below
+// API key is loaded from config.js file (separately, for security)
 const IMGBB_API_KEY = window.APP_CONFIG?.imgbbApiKey || '';
+
+// Check if API key is loaded
 if (!IMGBB_API_KEY) {
-  alert('⚠️ Config not loaded. Please contact admin.');
-  throw new Error('API key missing');
+  alert('⚠️ Configuration error!\n\nPlease make sure config.js file exists with your API key.\n\nContact admin if problem persists.');
+  throw new Error('API key missing - check config.js');
 }
- // ⚠️ REPLACE THIS!
 
 // ============== DATA ==============
 let photos = JSON.parse(localStorage.getItem('essoCleaningPhotos')) || [];
@@ -211,8 +208,8 @@ function updateDateTime() {
 
 // ============== UPLOAD ==============
 function openUploadModal(source) {
-  if (IMGBB_API_KEY === 'YOUR_IMGBB_API_KEY_HERE') {
-    showToast('⚠️ Please setup API key first! See instructions.');
+  if (!IMGBB_API_KEY) {
+    showToast('⚠️ API key not configured!');
     return;
   }
   if (source === 'camera') {
